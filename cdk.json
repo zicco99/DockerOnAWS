@@ -1,0 +1,8 @@
+{
+    "app": "python3 app.py",
+    "context": {
+      "toolkitBucketName": "toolkit_bucket",
+      "toolkitBucketRegion": "eu-west-1",
+      "toolkitStackName": "ToolkitBucketStack"
+    }
+  }
