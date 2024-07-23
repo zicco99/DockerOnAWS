@@ -51,45 +51,6 @@ jobs:
       - name: Update AWS CDK
         run: sudo npm install -g aws-cdk@latest
 
-      - name: Compile Prisma Client
-        run: |
-          cd backend/api
-          npm install prisma
-          echo "DATABASE_URL=${{ secrets.DB_URL }}" > .env
-          npx prisma generate --schema=./prisma/schema.prisma
-          chmod +x ./prisma/client/query-engine-rhel-openssl-1.0.x
-
-      - name: Compile and move NestJS Backend API to lambda's relative folder
-        run: |
-          cd backend/api
-          npm ci
-          npm run build-lambda
-          mv dist ../lambdas/nestjs_serverless
-
-      - name: Inject Prisma Client into TypeScript Lambdas before transpiling
-        run: |
-          for dir in synchronizer claude_chef; do
-            cp -r ./backend/api/prisma "./backend/lambdas/typescript/$dir/"
-            echo "Folder structure for $dir Lambda:"
-            tree -L 2 "./backend/lambdas/typescript/$dir/"
-          done
-
-      - name: Transpile TypeScript Lambdas to JS (as Lambdas do not support TS directly)
-        run: |
-          for dir in synchronizer claude_chef; do
-            if [ -d "backend/lambdas/typescript/$dir" ]; then
-              echo "Transpiling $dir to JS"
-              cd "backend/lambdas/typescript/$dir"
-              npm install -g typescript
-              npm install
-              npm run build-lambda
-              cd -  # go back to the previous directory
-            else
-              echo "Directory backend/lambdas/typescript/$dir does not exist"
-            fi
-          done
-
-
       - name: Install CDK dependencies and Python requirements
         run: |
           npm install -g aws-cdk
@@ -105,35 +66,15 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: cdk deploy --app="cdk.out" --require-approval=never --all --outputs-file=./cdk_outputs.json
 
-      - name: Deploy DB
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Build and Push Docker image
         run: |
-          cd backend/api
-          npx prisma migrate deploy --schema=./prisma/schema.prisma
-          npx prisma db push
-          
+          cd microservice
+          docker build -t microservice -f Dockerfile .
+          DOCKER_REPOSITORY_URI=$(jq -r .AppStack.DockerRepositoryUri < ../cdk_outputs.json)
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $DOCKER_REPOSITORY_URI
+          docker tag microservice $DOCKER_REPOSITORY_URI
+          docker push $DOCKER_REPOSITORY_URI
 
-      - name: Install dependencies and generate .env file
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          frontend_directory="$(pwd)/frontend/ionic-app"
-          npm ci --prefix "$frontend_directory"
-          env_file_path="$frontend_directory/.env"
-          > "$env_file_path"
-          jq -r '.AppStack | to_entries | .[] | "VITE_\(.key | ascii_upcase | gsub("([a-z])([A-Z])"; "\\1_\\2"))=\(.value)"' cdk_outputs.json >> "$env_file_path"
-          cat "$env_file_path"
-
-      - name: Run Frontend Build and Upload to S3 bucket
-        run: |
-          frontend_directory="$(pwd)/frontend/ionic-app"
-          CI=false && npm run build --prefix "$frontend_directory"
-          bucket_name=$(cat cdk_outputs.json | jq -r .AppStack.FrontendBucketName)
-          aws s3 cp "$frontend_directory/dist" "s3://$bucket_name" --recursive
-
-      - name: Invalidate CloudFront Cache
-        run: |
-          distribution_id=$(cat cdk_outputs.json | jq -r .AppStack.FrontendDistributionId)
-          aws cloudfront create-invalidation --distribution-id "$distribution_id" --paths "/*"
 
       #- name: Destroy stack
       #  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
