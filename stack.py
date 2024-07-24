@@ -77,6 +77,11 @@ class AppStack(Stack):
         docker_repository.grant_pull_push(build_project.role)
 
         build_project.add_to_role_policy(iam.PolicyStatement(
+            actions=["s3:GetObject"],
+            resources=[f"{source_bucket.bucket_arn}/*"]
+        ))
+
+        build_project.add_to_role_policy(iam.PolicyStatement(
             actions=["ecr:GetAuthorizationToken"],
             resources=["*"]
         ))
