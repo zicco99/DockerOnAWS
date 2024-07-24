@@ -66,15 +66,6 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: cdk deploy --app="cdk.out" --require-approval=never --all --outputs-file=./cdk_outputs.json
 
-      - name: Build and Push Docker image
-        run: |
-          cd microservice
-          docker build -t microservice -f Dockerfile .
-          DOCKER_REPOSITORY_URI=$(jq -r .AppStack.DockerRepositoryUri < ../cdk_outputs.json)
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $DOCKER_REPOSITORY_URI
-          docker tag microservice $DOCKER_REPOSITORY_URI
-          docker push $DOCKER_REPOSITORY_URI
-
 
       #- name: Destroy stack
       #  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
