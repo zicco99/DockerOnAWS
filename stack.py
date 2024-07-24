@@ -39,7 +39,7 @@ class AppStack(Stack):
             ),
             source=codebuild.Source.s3(
                 bucket=source_bucket,
-                path="microservice"
+                path="microservice/"
             ),
             build_spec=codebuild.BuildSpec.from_object({
                 'version': '0.2',
