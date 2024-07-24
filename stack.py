@@ -74,6 +74,7 @@ class AppStack(Stack):
             })
         )
 
+
         docker_repository.grant_pull_push(build_project.role)
 
         build_project.add_to_role_policy(iam.PolicyStatement(
