@@ -35,11 +35,25 @@ class AppStack(Stack):
         build_project = codebuild.Project(self, f"{repository_name}-{stage}-microservice_build_project",
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
-                privileged=True
+                privileged=True,
+                environment_variables={
+                    'AWS_ACCOUNT_ID': codebuild.BuildEnvironmentVariable(
+                        value=self.account
+                    ),
+                    'AWS_DEFAULT_REGION': codebuild.BuildEnvironmentVariable(
+                        value=self.region
+                    ),
+                    'REPOSITORY_URI': codebuild.BuildEnvironmentVariable(
+                        value=docker_repository.repository_uri
+                    ),
+                    'IMAGE_TAG': codebuild.BuildEnvironmentVariable(
+                        value='latest'  # Default image tag
+                    )
+                }
             ),
             source=codebuild.Source.s3(
                 bucket=source_bucket,
-                path="microservice/"
+                path="microservice/"  # Ensure this path matches the destination_key_prefix in BucketDeployment
             ),
             build_spec=codebuild.BuildSpec.from_object({
                 'version': '0.2',
@@ -48,8 +62,7 @@ class AppStack(Stack):
                         'commands': [
                             'echo Logging in to Amazon ECR...',
                             'aws --version',
-                            '$(aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com)',
-                            f'REPOSITORY_URI={docker_repository.repository_uri}',
+                            'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI',
                             'COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)',
                             'IMAGE_TAG=${COMMIT_HASH:=latest}'
                         ]
