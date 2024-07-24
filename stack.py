@@ -15,12 +15,13 @@ class AppStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, repository_name: str, stage: str, image_tag: str, push_image: bool, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
  
-        source_bucket = s3.Bucket(self, "SourceBucket",
+        source_bucket = s3.Bucket(self, f"{repository_name}-{stage}-source_bucket",
+            bucket_name=f"{repository_name}-{stage}-source-bucket",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True
         )
 
-        s3_deployment.BucketDeployment(self, "DeployMicroservice",
+        s3_deployment.BucketDeployment(self, f"{repository_name}-{stage}-s3_deployment",
             sources=[s3_deployment.Source.asset("./microservice")],
             destination_bucket=source_bucket,
             destination_key_prefix="microservice"
@@ -31,9 +32,9 @@ class AppStack(Stack):
             removal_policy=RemovalPolicy.DESTROY
         )
 
-        build_project = codebuild.Project(self, "{repository_name}-{stage}-microservice_build_project",
+        build_project = codebuild.Project(self, f"{repository_name}-{stage}-microservice_build_project",
             environment=codebuild.BuildEnvironment(
-                build_image=codebuild.LinuxBuildImage.STANDARD_5_0,
+                build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
                 privileged=True
             ),
             source=codebuild.Source.s3(
@@ -84,4 +85,3 @@ class AppStack(Stack):
         # Outputs
         CfnOutput(self, "StackRegion", value=self.region, description="AWS Region")
         CfnOutput(self, "DockerRepositoryUri", value=docker_repository.repository_uri, description="Docker Repository Url")
-        CfnOutput(self, "SourceBucketName", value=source_bucket.bucket_name, description="Source S3 Bucket")
