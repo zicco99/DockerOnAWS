@@ -15,27 +15,23 @@ class AppStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, repository_name: str, stage: str, image_tag: str, push_image: bool, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
  
-        # S3 bucket for source code
         source_bucket = s3.Bucket(self, f"{repository_name}-{stage}-source_bucket",
             bucket_name=f"{repository_name}-{stage}-source-bucket",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True
         )
 
-        # Deploy source code to S3 bucket
         s3_deployment.BucketDeployment(self, f"{repository_name}-{stage}-s3_deployment",
             sources=[s3_deployment.Source.asset("./microservice")],
             destination_bucket=source_bucket,
-            destination_key_prefix="microservice"  # Ensure this prefix matches the CodeBuild source path
+            destination_key_prefix="microservice"
         )
 
-        # ECR repository for Docker images
         docker_repository = ecr.Repository(self, f"{repository_name}-{stage}-docker_repository",
             repository_name=repository_name,
             removal_policy=RemovalPolicy.DESTROY
         )
 
-        # CodeBuild project to build and push Docker images
         build_project = codebuild.Project(self, f"{repository_name}-{stage}-microservice_build_project",
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
@@ -43,7 +39,7 @@ class AppStack(Stack):
             ),
             source=codebuild.Source.s3(
                 bucket=source_bucket,
-                path="microservice"  # Ensure this path matches the destination_key_prefix in BucketDeployment
+                path="microservice"
             ),
             build_spec=codebuild.BuildSpec.from_object({
                 'version': '0.2',
@@ -78,7 +74,6 @@ class AppStack(Stack):
             })
         )
 
-        # Grant permissions to CodeBuild project
         docker_repository.grant_pull_push(build_project.role)
 
         build_project.add_to_role_policy(iam.PolicyStatement(
