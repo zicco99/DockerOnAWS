@@ -7,8 +7,7 @@ from aws_cdk import (
     aws_codebuild as codebuild,
     aws_iam as iam,
     aws_s3 as s3,
-    aws_s3_deployment as s3_deployment,
-    core
+    aws_s3_deployment as s3_deployment
 )
 from constructs import Construct
 
