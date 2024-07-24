@@ -86,6 +86,7 @@ class AppStack(Stack):
                 }
             })
         )
+        
 
         docker_repository.grant_pull_push(build_project.role)
 
