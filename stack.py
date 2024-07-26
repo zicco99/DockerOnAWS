@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_codebuild as codebuild,
     aws_iam as iam,
     aws_s3 as s3,
+    aws_s3_deployment as s3_deployment,
     aws_events as events,
     aws_events_targets as targets,
 )
@@ -19,6 +20,12 @@ class AppStack(Stack):
             bucket_name=f"{repository_name}-{stage}-source-bucket",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True
+        )
+
+        s3_deployment.BucketDeployment(self, f"{repository_name}-{stage}-s3_deployment",
+            sources=[s3_deployment.Source.asset("./microservice")],
+            destination_bucket=source_bucket,
+            destination_key_prefix="microservice"
         )
         
         docker_repository = ecr.Repository(self, f"{repository_name}-{stage}-docker_repository",
