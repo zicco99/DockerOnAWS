@@ -21,14 +21,13 @@ class AppStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True
         )
-
-        # BucketDeployment ensures that only changed files are uploaded
+        
         s3_deployment.BucketDeployment(self, f"{repository_name}-{stage}-s3_deployment",
             sources=[s3_deployment.Source.asset("./microservice")],
             destination_bucket=source_bucket,
             destination_key_prefix="microservice",
-            prune=True,  # Ensures that files not present in the source are deleted from the destination
-            retain_on_delete=False  # Ensures that files are deleted if the stack is deleted
+            prune=True,
+            retain_on_delete=False
         )
 
         docker_repository = ecr.Repository(self, f"{repository_name}-{stage}-docker_repository",
@@ -104,11 +103,11 @@ class AppStack(Stack):
         ))
 
         rule = events.Rule(self, f"{repository_name}-{stage}-rule",
-            event_pattern={
-                "source": ["aws.s3"],
-                "detail-type": ["Object Created"],
-                "resources": [source_bucket.bucket_arn]
-            }
+            event_pattern = events.EventPattern(
+                source = ["aws.s3"],
+                detail_type = ["S3 Bucket Updated"],
+                resources = [source_bucket.bucket_arn]
+            )
         )
 
         rule.add_target(targets.CodeBuildProject(build_project))
