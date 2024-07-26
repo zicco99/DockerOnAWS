@@ -4,7 +4,7 @@ import connectToDatabase from "./db.mjs";
 const app = express();
 
 app.get("/", async (req, res) => {
-    res.send("<h2>Hi there!</h2>")
+    res.send("<h2>Hi there v2!</h2>")
 })
 
 await connectToDatabase();
