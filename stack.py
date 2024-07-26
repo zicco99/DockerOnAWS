@@ -1,30 +1,34 @@
 from aws_cdk import (
     CfnOutput,
     Stack,
-    Stage,
     RemovalPolicy,
     aws_ecr as ecr,
     aws_codebuild as codebuild,
     aws_iam as iam,
     aws_s3 as s3,
-    aws_s3_deployment as s3_deployment
+    aws_s3_deployment as s3_deployment,
+    aws_events as events,
+    aws_events_targets as targets,
 )
 from constructs import Construct
 
 class AppStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, repository_name: str, stage: str, image_tag: str, push_image: bool, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
- 
+
         source_bucket = s3.Bucket(self, f"{repository_name}-{stage}-source_bucket",
             bucket_name=f"{repository_name}-{stage}-source-bucket",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True
         )
 
+        # BucketDeployment ensures that only changed files are uploaded
         s3_deployment.BucketDeployment(self, f"{repository_name}-{stage}-s3_deployment",
             sources=[s3_deployment.Source.asset("./microservice")],
             destination_bucket=source_bucket,
-            destination_key_prefix="microservice"
+            destination_key_prefix="microservice",
+            prune=True,  # Ensures that files not present in the source are deleted from the destination
+            retain_on_delete=False  # Ensures that files are deleted if the stack is deleted
         )
 
         docker_repository = ecr.Repository(self, f"{repository_name}-{stage}-docker_repository",
@@ -86,7 +90,6 @@ class AppStack(Stack):
                 }
             })
         )
-        
 
         docker_repository.grant_pull_push(build_project.role)
 
@@ -99,6 +102,16 @@ class AppStack(Stack):
             actions=["ecr:GetAuthorizationToken"],
             resources=["*"]
         ))
+
+        rule = events.Rule(self, f"{repository_name}-{stage}-rule",
+            event_pattern={
+                "source": ["aws.s3"],
+                "detail-type": ["Object Created"],
+                "resources": [source_bucket.bucket_arn]
+            }
+        )
+
+        rule.add_target(targets.CodeBuildProject(build_project))
 
         # Outputs
         CfnOutput(self, "StackRegion", value=self.region, description="AWS Region")
