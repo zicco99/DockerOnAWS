@@ -162,5 +162,7 @@ class AppStack(Stack):
             assign_public_ip=True
         )
 
+        
+
         CfnOutput(self, "StackRegion", value=self.region, description="AWS Region")
         CfnOutput(self, "DockerRepositoryUri", value=docker_repository.repository_uri, description="Docker Repository URL")
