@@ -126,6 +126,7 @@ def handler(event, context):
             starting_position=_lambda.StartingPosition.TRIM_HORIZON
         )
 
+
         #-----------------
         #   Permissions -
         #-----------------
