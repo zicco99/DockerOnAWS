@@ -42,7 +42,7 @@ class AppStack(Stack):
         #-----------------
         # Setting up the codebuild project to build the Docker image
 
-        image_tag = image_tag + "-" + stage
+        IMAGE_TAG = image_tag + "-" + stage
 
         source_bucket = s3.Bucket(self, f"{repository_name}-{stage}-source_bucket",
             bucket_name=f"{repository_name}-{stage}-source-bucket",
@@ -64,7 +64,7 @@ class AppStack(Stack):
                     'AWS_ACCOUNT_ID': codebuild.BuildEnvironmentVariable(value=self.account),
                     'AWS_DEFAULT_REGION': codebuild.BuildEnvironmentVariable(value=self.region),
                     'REPOSITORY_URI': codebuild.BuildEnvironmentVariable(value=docker_repository.repository_uri),
-                    'IMAGE_TAG': image_tag
+                    'IMAGE_TAG': IMAGE_TAG
                 }
             ),
             source=codebuild.Source.s3(
