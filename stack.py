@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_codebuild as codebuild,
     aws_iam as iam,
     aws_s3 as s3,
+    aws_lambda as _lambda,
     aws_ec2 as ec2,
     aws_ecs as ecs,
     aws_logs as logs,
@@ -89,6 +90,38 @@ class AppStack(Stack):
                     }
                 }
             })
+        )
+
+        # Lambda function to trigger CodeBuild
+        trigger_build_lambda = _lambda.Function(self, f"{repository_name}-{stage}-trigger-build-lambda",
+            runtime=_lambda.Runtime.PYTHON_3_8,
+            handler="index.handler",
+            code=_lambda.Code.from_inline("""
+import json
+import boto3
+
+def handler(event, context):
+    client = boto3.client('codebuild')
+    response = client.start_build(
+        projectName=event['project_name']
+    )
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Build started!')
+    }
+"""),
+            environment={
+                'PROJECT_NAME': build_project.project_name
+            }
+        )
+
+        # Grant Lambda function permission to start CodeBuild project
+        build_project.grant_principal(trigger_build_lambda)
+
+        # Trigger Lambda function to start CodeBuild project
+        build_trigger = trigger_build_lambda.add_event_source_mapping(f"{repository_name}-{stage}-event-source",
+            event_source_arn=source_bucket.bucket_arn,
+            starting_position=_lambda.StartingPosition.TRIM_HORIZON
         )
 
         #-----------------
