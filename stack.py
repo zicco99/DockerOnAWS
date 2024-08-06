@@ -20,11 +20,11 @@ class AppStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, repository_name: str, stage: str, image_tag: str, push_image: bool, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        #-----------------
+        # -----------------
         #   Setup  -
-        #-----------------
+        # -----------------
 
-        #VPC with 2 AZs
+        # VPC with 2 AZs
         main_vpc = ec2.Vpc(self, f"{repository_name}-{stage}-vpc", max_azs=2)
 
         # Define ECR Repository
@@ -35,9 +35,9 @@ class AppStack(Stack):
 
         self.ecr_repository = docker_repository
 
-        #-----------------
+        # -----------------
         #   Dockerizing  -
-        #-----------------
+        # -----------------
         # Setting up the codebuild project to build the Docker image
 
         IMAGE_TAG = image_tag + "-" + stage
@@ -92,46 +92,7 @@ class AppStack(Stack):
             })
         )
 
-        # Lambda function to trigger CodeBuild
-        trigger_build_lambda = _lambda.Function(self, f"{repository_name}-{stage}-trigger-build-lambda",
-            runtime=_lambda.Runtime.PYTHON_3_8,
-            handler="index.handler",
-            code=_lambda.Code.from_inline("""
-import json
-import boto3
-
-def handler(event, context):
-    client = boto3.client('codebuild')
-    response = client.start_build(
-        projectName=event['project_name']
-    )
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Build started!')
-    }
-"""),
-            environment={
-                'PROJECT_NAME': build_project.project_name
-            }
-        )
-
-        trigger_build_lambda.add_to_role_policy(iam.PolicyStatement(
-            actions=["codebuild:StartBuild"],
-            resources=[build_project.project_arn]
-        ))
-
-        # Trigger Lambda function to start CodeBuild project
-        build_trigger = trigger_build_lambda.add_event_source_mapping(f"{repository_name}-{stage}-event-source",
-            event_source_arn=source_bucket.bucket_arn,
-            starting_position=_lambda.StartingPosition.TRIM_HORIZON
-        )
-
-
-        #-----------------
-        #   Permissions -
-        #-----------------
         # Permissions for the CodeBuild project
-
         build_project.add_to_role_policy(iam.PolicyStatement(
             actions=["s3:GetObject"],
             resources=[f"{source_bucket.bucket_arn}/*"]
@@ -142,12 +103,14 @@ def handler(event, context):
             resources=["*"]
         ))
 
+        # Deploy source code to S3
         s3_deployment.BucketDeployment(self, f"{repository_name}-{stage}-s3-deployment",
             sources=[s3_deployment.Source.asset("./microservice")],
             destination_bucket=source_bucket,
             destination_key_prefix="microservice"  # Folder within the S3 bucket to upload to
         )
 
+        # Event rule to trigger CodeBuild on S3 upload
         rule = events.Rule(self, f"{repository_name}-{stage}-rule",
             event_pattern=events.EventPattern(
                 source=["aws.s3"],
@@ -163,12 +126,11 @@ def handler(event, context):
 
         rule.add_target(targets.CodeBuildProject(build_project))
 
-        #-----------------
+        # -----------------
         #   Deployment  -
-        #-----------------
+        # -----------------
 
-        # Define all is needed for a fargate service
-
+        # Define all needed for a Fargate service
         cluster = ecs.Cluster(self, f"{repository_name}-{stage}-cluster",
             cluster_name=f"{repository_name}-{stage}-cluster",
             vpc=main_vpc
@@ -179,7 +141,7 @@ def handler(event, context):
             removal_policy=RemovalPolicy.DESTROY
         )
 
-        task_definition = ecs.FargateTaskDefinition(self,f"{repository_name}-{stage}-task-definition",
+        task_definition = ecs.FargateTaskDefinition(self, f"{repository_name}-{stage}-task-definition",
             memory_limit_mib=512,
             cpu=256,
         )
