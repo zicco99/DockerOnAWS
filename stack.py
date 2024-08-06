@@ -16,7 +16,6 @@ from aws_cdk import (
 from constructs import Construct
 
 class AppStack(Stack):
-    # From constructor extract image tag, stage and repository name
     def __init__(self, scope: Construct, construct_id: str, repository_name: str, stage: str, image_tag: str, push_image: bool, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -25,17 +24,15 @@ class AppStack(Stack):
         #-----------------
 
         #VPC with 2 AZs
-        main_vpc = ec2.Vpc(self, "{}", max_azs=2)
+        main_vpc = ec2.Vpc(self, f"{repository_name}-{stage}-vpc", max_azs=2)
 
         # Define ECR Repository
         docker_repository = ecr.Repository(self, f"{repository_name}-{stage}-docker-repository",
-            repository_name=repository_name,
+            repository_name=f"{repository_name}-{stage}",
             removal_policy=RemovalPolicy.DESTROY
         )
 
         self.ecr_repository = docker_repository
-
-        
 
         #-----------------
         #   Dockerizing  -
@@ -44,21 +41,16 @@ class AppStack(Stack):
 
         IMAGE_TAG = image_tag + "-" + stage
 
-        source_bucket = s3.Bucket(self, f"{repository_name}-{stage}-source_bucket",
+        source_bucket = s3.Bucket(self, f"{repository_name}-{stage}-source-bucket",
             bucket_name=f"{repository_name}-{stage}-source-bucket",
-            removal_policy=RemovalPolicy.DESTROY, 
-            auto_delete_objects=True 
-        )
-
-        docker_repository = ecr.Repository(self, f"{repository_name}-{stage}-docker_repository",
-            repository_name=repository_name,
-            removal_policy=RemovalPolicy.DESTROY  # Ensures repository is deleted when the stack is deleted
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True
         )
 
         # CodeBuild project to build Docker images
-        build_project = codebuild.Project(self, f"{repository_name}-{stage}-microservice_build_project",
+        build_project = codebuild.Project(self, f"{repository_name}-{stage}-microservice-build-project",
             environment=codebuild.BuildEnvironment(
-                build_image=codebuild.LinuxBuildImage.STANDARD_7_0,  # Use standard Linux build image
+                build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
                 privileged=True,  # Required to build Docker images
                 environment_variables={
                     'AWS_ACCOUNT_ID': codebuild.BuildEnvironmentVariable(value=self.account),
@@ -99,8 +91,6 @@ class AppStack(Stack):
             })
         )
 
-        
-
         #-----------------
         #   Permissions -
         #-----------------
@@ -118,7 +108,7 @@ class AppStack(Stack):
             resources=["*"]
         ))
 
-        s3_deployment.BucketDeployment(self, f"{repository_name}-{stage}-s3_deployment",
+        s3_deployment.BucketDeployment(self, f"{repository_name}-{stage}-s3-deployment",
             sources=[s3_deployment.Source.asset("./microservice")],
             destination_bucket=source_bucket,
             destination_key_prefix="microservice"  # Folder within the S3 bucket to upload to
@@ -138,7 +128,6 @@ class AppStack(Stack):
         )
 
         rule.add_target(targets.CodeBuildProject(build_project))
-
 
         #-----------------
         #   Deployment  -
