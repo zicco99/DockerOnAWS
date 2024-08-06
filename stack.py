@@ -64,7 +64,7 @@ class AppStack(Stack):
                     'AWS_ACCOUNT_ID': codebuild.BuildEnvironmentVariable(value=self.account),
                     'AWS_DEFAULT_REGION': codebuild.BuildEnvironmentVariable(value=self.region),
                     'REPOSITORY_URI': codebuild.BuildEnvironmentVariable(value=docker_repository.repository_uri),
-                    'IMAGE_TAG': IMAGE_TAG
+                    'IMAGE_TAG': codebuild.BuildEnvironmentVariable(value=IMAGE_TAG)
                 }
             ),
             source=codebuild.Source.s3(
