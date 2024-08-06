@@ -115,6 +115,11 @@ def handler(event, context):
             }
         )
 
+        trigger_build_lambda.role.add_to_principal_policy(iam.PolicyStatement(
+            actions=["codebuild:StartBuild"],
+            resources=[build_project.project_arn]
+        ))
+
         # Grant Lambda function permission to start CodeBuild project
         build_project.grant_principal(trigger_build_lambda)
 
@@ -128,8 +133,6 @@ def handler(event, context):
         #   Permissions -
         #-----------------
         # Permissions for the CodeBuild project
-
-        docker_repository.grant_pull_push(build_project.role)
 
         build_project.add_to_role_policy(iam.PolicyStatement(
             actions=["s3:GetObject"],
