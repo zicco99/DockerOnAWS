@@ -28,7 +28,7 @@ class AppStack(Stack):
         main_vpc = ec2.Vpc(self, "{}", max_azs=2)
 
         # Define ECR Repository
-        docker_repository = ecr.Repository(self, f"{repository_name}-{stage}-repository",
+        docker_repository = ecr.Repository(self, f"{repository_name}-{stage}-docker-repository",
             repository_name=repository_name,
             removal_policy=RemovalPolicy.DESTROY
         )
@@ -177,5 +177,6 @@ class AppStack(Stack):
             assign_public_ip=True
         )
 
+        CfnOutput(self,"Url", value=service.load_balancer_target
         CfnOutput(self, "StackRegion", value=self.region, description="AWS Region")
         CfnOutput(self, "DockerRepositoryUri", value=docker_repository.repository_uri, description="Docker Repository URL")
