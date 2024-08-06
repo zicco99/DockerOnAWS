@@ -119,9 +119,6 @@ def handler(event, context):
             actions=["codebuild:StartBuild"],
             resources=[build_project.project_arn]
         ))
-        
-        # Grant Lambda function permission to start CodeBuild project
-        build_project.grant_principal(trigger_build_lambda)
 
         # Trigger Lambda function to start CodeBuild project
         build_trigger = trigger_build_lambda.add_event_source_mapping(f"{repository_name}-{stage}-event-source",
