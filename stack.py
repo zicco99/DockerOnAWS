@@ -40,9 +40,9 @@ class AppStack(Stack):
         #-----------------
         #   Dockerizing  -
         #-----------------
-        # Dockerizing the microservice
+        # Setting up the codebuild project to build the Docker image
 
-        image_tag = codebuild.BuildEnvironmentVariable(value=image_tag) + '-' + stage + '-latest'
+        image_tag = str(codebuild.BuildEnvironmentVariable(value=image_tag)) + '-' + stage + '-latest'
 
         source_bucket = s3.Bucket(self, f"{repository_name}-{stage}-source_bucket",
             bucket_name=f"{repository_name}-{stage}-source-bucket",
@@ -104,6 +104,7 @@ class AppStack(Stack):
         #-----------------
         #   Permissions -
         #-----------------
+        # Permissions for the CodeBuild project
 
         docker_repository.grant_pull_push(build_project.role)
 
