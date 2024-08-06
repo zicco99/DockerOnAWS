@@ -41,6 +41,7 @@ class AppStack(Stack):
         # Setting up the codebuild project to build the Docker image
 
         IMAGE_TAG = image_tag + "-" + stage
+        
 
         source_bucket = s3.Bucket(self, f"{repository_name}-{stage}-source-bucket",
             bucket_name=f"{repository_name}-{stage}-source-bucket",
@@ -165,7 +166,6 @@ class AppStack(Stack):
         )
 
         '''
-        
 
 
 
